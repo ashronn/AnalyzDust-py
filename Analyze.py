@@ -321,11 +321,11 @@ if st.session_state.selected_set_id:
                     # สร้าง 3 columns เพื่อดันปุ่มมาไว้ตรงกลาง
                     col_l, col_mid, col_r = st.columns([1, 2, 1])
                 
-                with col_mid:
-                    if 'png' in files:
-                        st.download_button("📥 Download PNG", files['png'], "report.png", "image/png", use_container_width=True)
-                    if 'pdf' in files:
-                        st.download_button("📄 Download PDF", files['pdf'], "report.pdf", "application/pdf", use_container_width=True)
+                    with col_mid:
+                        if 'png' in files:
+                            st.download_button("📥 Download PNG", files['png'], "report.png", "image/png", use_container_width=True)
+                        if 'pdf' in files:
+                            st.download_button("📄 Download PDF", files['pdf'], "report.pdf", "application/pdf", use_container_width=True)
 
     # --- UI เดิม (ห้ามแก้) ---
     tabs = st.tabs(["📋 Executive Summary", "🔍 Gap Analysis", "📈 Trends & Charts"])
@@ -411,6 +411,7 @@ else:
     st.title("👈 โปรดอัปโหลดหรือเลือกชุดข้อมูล")
 
     st.info("ระบบจะแยก Overall และ Gap Analysis ของแต่ละ Point ให้โดยอัตโนมัติ")
+
 
 
 

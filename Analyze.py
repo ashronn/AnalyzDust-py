@@ -305,11 +305,12 @@ if st.session_state.selected_set_id:
                     _, col_mid, _ = st.columns([1, 2, 1])
                     with col_mid:
                         files = st.session_state.generated_files
+                        file_base_name = str(target_date).replace(".csv", "").replace(".CSV", "")
                         if 'png' in files:
-                            st.download_button("🖼️ Download PNG Report", files['png'], f"Summary_{target_date}.png", "image/png", use_container_width=True)
+                            st.download_button("🖼️ Download PNG Report", files['png'], f"Report_{file_base_name}.png", "image/png", use_container_width=True)
                         if 'pdf' in files:
                             st.write(" ")
-                            st.download_button("📄 Download PDF Report", files['pdf'], f"Summary_{target_date}.pdf", "application/pdf", use_container_width=True)
+                            st.download_button("📄 Download PDF Report", files['pdf'], f"Report_{file_base_name}.pdf", "application/pdf", use_container_width=True)
         st.divider()
 
     # --- UI เดิม (ห้ามแก้) ---
@@ -395,4 +396,5 @@ if st.session_state.selected_set_id:
 else:
     st.title("👈 โปรดอัปโหลดหรือเลือกชุดข้อมูล")
     st.info("ระบบจะแยก Overall และ Gap Analysis ของแต่ละ Point ให้โดยอัตโนมัติ")
+
 

@@ -316,12 +316,32 @@ if st.session_state.selected_set_id:
 
                 # 4. แสดงปุ่มดาวน์โหลด (ถ้าไฟล์ถูกสร้างแล้ว)
                 if 'final_files' in st.session_state:
-                    dl1, dl2 = st.columns(2)
-                    report_files = st.session_state.final_files
+                st.markdown("---") # เส้นคั่นเบาๆ
+                report_files = st.session_state.final_files
+                
+                # ใช้ 3 columns โดยให้ col_mid (ตรงกลาง) เป็นคนถือปุ่ม
+                # เลข [1, 2, 1] หมายถึง ด้านซ้ายว่าง 1 ส่วน / ตรงกลางกว้าง 2 ส่วน / ด้านขวาว่าง 1 ส่วน
+                col_side_l, col_mid, col_side_r = st.columns([1, 2, 1])
+                
+                with col_mid:
                     if 'png' in report_files:
-                        dl1.download_button("📥 Download PNG (Updated)", report_files['png'], "report_updated.png", "image/png", use_container_width=True)
+                        st.download_button(
+                            "📥 Download PNG (Updated Text)", 
+                            report_files['png'], 
+                            "report.png", 
+                            "image/png", 
+                            use_container_width=True
+                        )
+                    
+                    # ถ้ามี PDF ด้วย ให้เว้นระยะนิดหน่อยแล้ววางต่อกัน
                     if 'pdf' in report_files:
-                        dl2.download_button("📥 Download PDF (Updated)", report_files['pdf'], "report_updated.pdf", "application/pdf", use_container_width=True)
+                        st.download_button(
+                            "📄 Download PDF (Updated Text)", 
+                            report_files['pdf'], 
+                            "report.pdf", 
+                            "application/pdf", 
+                            use_container_width=True
+                        )
 
     # --- UI เดิม (ห้ามแก้) ---
     tabs = st.tabs(["📋 Executive Summary", "🔍 Gap Analysis", "📈 Trends & Charts"])
@@ -407,4 +427,5 @@ else:
     st.title("👈 โปรดอัปโหลดหรือเลือกชุดข้อมูล")
 
     st.info("ระบบจะแยก Overall และ Gap Analysis ของแต่ละ Point ให้โดยอัตโนมัติ")
+
 

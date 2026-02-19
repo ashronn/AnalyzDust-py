@@ -315,14 +315,18 @@ if st.session_state.selected_set_id:
                     st.success("สร้างไฟล์พร้อมดาวน์โหลดแล้ว!")
 
                 # 4. แสดงปุ่มดาวน์โหลด (ถ้าไฟล์ถูกสร้างแล้ว)
-                if "generated_files" in st.session_state:
-                f_cols = st.columns(2)
-                files = st.session_state.generated_files
-                if 'png' in files:
-                    f_cols[0].download_button("🖼️ Download PNG", files['png'], "report.png", "image/png", use_container_width=True)
-                if 'pdf' in files:
-                    f_cols[1].download_button("📄 Download PDF", files['pdf'], "report.pdf", "application/pdf", use_container_width=True)
-                        )
+                if "final_files" in st.session_state:
+                st.write("---")
+                files = st.session_state.final_files
+                
+                # สร้าง 3 columns เพื่อดันปุ่มมาไว้ตรงกลาง
+                col_l, col_mid, col_r = st.columns([1, 2, 1])
+                
+                with col_mid:
+                    if 'png' in files:
+                        st.download_button("📥 Download PNG", files['png'], "report.png", "image/png", use_container_width=True)
+                    if 'pdf' in files:
+                        st.download_button("📄 Download PDF", files['pdf'], "report.pdf", "application/pdf", use_container_width=True)
 
     # --- UI เดิม (ห้ามแก้) ---
     tabs = st.tabs(["📋 Executive Summary", "🔍 Gap Analysis", "📈 Trends & Charts"])
@@ -408,6 +412,7 @@ else:
     st.title("👈 โปรดอัปโหลดหรือเลือกชุดข้อมูล")
 
     st.info("ระบบจะแยก Overall และ Gap Analysis ของแต่ละ Point ให้โดยอัตโนมัติ")
+
 
 
 

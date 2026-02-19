@@ -9,13 +9,29 @@ import matplotlib.pyplot as plt
 import matplotlib
 from datetime import datetime as dt
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.font_manager as fm
+import urllib.request
+import os
 
+# ฟังก์ชันดาวน์โหลดฟอนต์ภาษาไทย (เลือก Sarabun เพราะดูเป็นทางการ)
+def load_thai_font():
+    font_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf"
+    font_name = "Sarabun-Regular.ttf"
+    if not os.path.exists(font_name):
+        urllib.request.urlretrieve(font_url, font_name)
+    
+    # Register font กับ Matplotlib
+    fm.fontManager.addfont(font_name)
+    return font_name
 
-# python -m streamlit run Analyze.py
-
-
-# --- 1. Configuration & Logic เดิม (ห้ามแก้ไข) ---
-matplotlib.rcParams['font.family'] = 'Tahoma'
+# เรียกใช้งาน
+try:
+    font_filename = load_thai_font()
+    thai_font = fm.FontProperties(fname=font_filename)
+    matplotlib.rcParams['font.family'] = thai_font.get_name()
+except:
+    # Fallback ถ้าโหลดไม่ได้จริงๆ
+    matplotlib.rcParams['font.family'] = 'sans-serif'
 
 def apply_calc_logic(df):
     """รักษา Logic การคำนวณเดิม: สร้าง flag สำหรับการวิเคราะห์คุณภาพ"""
@@ -117,11 +133,11 @@ def calculate_continuity_v3(df, start_ts, end_ts, expected_sec):
     
     return stats, resampled_graph
 
-def generate_summary_report(points_data, target_date_str, report_type, export_format):
-    # ดึงวันที่จาก Dataset
+def generate_summary_report(points_data, target_date_str, report_type, export_format, manual_text=None):
     first_df = list(points_data.values())[0]
     base_date = first_df['datetime'].dt.normalize().iloc[0]
     
+    # คำนวณช่วงเวลาและวินาทีที่คาดหวัง
     start_dt = base_date
     if report_type == "12 ชั่วโมง":
         end_dt = base_date + timedelta(hours=11, minutes=59, seconds=59)
@@ -130,52 +146,59 @@ def generate_summary_report(points_data, target_date_str, report_type, export_fo
         end_dt = base_date + timedelta(hours=23, minutes=59, seconds=59)
         total_sec = 86400
 
-    report_text = f"รายงานผลวันที่ {base_date.strftime('%d/%m/%Y')}\n"
-    report_text += f"หลังจากเก็บข้อมูลมา {report_type}\n"
-    report_text += f"ข้อมูลที่เข้าของแต่ละ Point จากทั้งหมด {total_sec} วินาที\n\n"
+    # สร้างข้อความรายงานอัตโนมัติ (กรณีไม่มีการแก้ไขด้วยมือ)
+    if manual_text is None:
+        report_text = f"รายงานผลวันที่ {base_date.strftime('%d/%m/%Y')}\n"
+        report_text += f"วิเคราะห์ข้อมูลย้อนหลัง {report_type}\n"
+        report_text += f"ฐานข้อมูลที่ควรได้รับ: {total_sec} วินาที\n"
+        report_text += "------------------------------------------\n\n"
+        point_details = ""
+        for pid, df in points_data.items():
+            stats, _ = calculate_continuity_v3(df, start_dt, end_dt, total_sec)
+            if stats:
+                point_details += f"📍 Point {pid}:\n"
+                point_details += f"  - ปริมาณข้อมูลเข้า: {stats['overall']['sec']} วินาที ({stats['overall']['pct']:.2f}%)\n"
+                point_details += f"  - ความสมบูรณ์เซนเซอร์ (Both): {stats['both']['pct']:.2f}%\n"
+                point_details += f"  - ค่าผิดปกติ (Outlier): {stats['outlier']} ครั้ง\n\n"
+        final_display_text = report_text + point_details
+    else:
+        final_display_text = manual_text
 
+    # --- การสร้างรูปภาพ (Matplotlib) ---
     plt.close('all')
-    fig = plt.figure(figsize=(10, 14))
-    # ปรับพื้นที่ข้อความ (ax_text) และพื้นที่กราฟ (ax_graph)
-    ax_text = fig.add_axes([0.1, 0.40, 0.8, 0.55]) 
+    fig = plt.figure(figsize=(10, 13)) # เพิ่มความสูงเล็กน้อยกันข้อความยาว
+    
+    # 1. ส่วนข้อความ (Text Area)
+    ax_text = fig.add_axes([0.1, 0.40, 0.8, 0.55]) # ปรับสัดส่วนพื้นที่
     ax_text.axis('off')
-    ax_graph = fig.add_axes([0.1, 0.1, 0.8, 0.25])
-
-    point_details = ""
-    for idx, (pid, df) in enumerate(points_data.items()):
-        stats, res_graph = calculate_continuity_v3(df, start_dt, end_dt, total_sec)
-        
-        if stats:
-            point_details += f"P{pid}:\n"
-            point_details += f"ข้อมูลเข้า (Overall): {stats['overall']['sec']} วินาที ({stats['overall']['pct']:.2f}%)\n"
-            point_details += f"- DHT22: {stats['dht']['sec']} วินาที ({stats['dht']['pct']:.2f}%)\n"
-            point_details += f"- Piera: {stats['piera']['sec']} วินาที ({stats['piera']['pct']:.2f}%)\n"
-            point_details += f"- ทั้งคู่ (Both): {stats['both']['sec']} วินาที ({stats['both']['pct']:.2f}%)\n"
-            point_details += f"Outlier ที่พบ: {stats['outlier']} ค่า\n\n"
-
+    # ใช้ thai_font ที่ถูกสร้างจาก fm.FontProperties ไว้ตอนต้นไฟล์
+    ax_text.text(0, 1, final_display_text, fontproperties=thai_font, fontsize=12, va='top', linespacing=1.6)
+    
+    # 2. ส่วนกราฟ (Trend Chart)
+    ax_graph = fig.add_axes([0.1, 0.08, 0.8, 0.22])
+    for pid, df in points_data.items():
+        _, res_graph = calculate_continuity_v3(df, start_dt, end_dt, total_sec)
         if res_graph is not None:
-            # ใช้พล็อตจำนวน Both Sensors ต่อ 5 นาทีเพื่อให้เหมือน Tab Trend
-            ax_graph.plot(res_graph.index, res_graph['has_both'], label=f'Point {pid}', linewidth=1.5)
+            ax_graph.plot(res_graph.index, res_graph['has_both'], label=f'Point {pid}', linewidth=1.2)
+    
+    ax_graph.set_title("Data Continuity Trend (Counts/5min)", fontproperties=thai_font, fontsize=14)
+    ax_graph.legend(prop=thai_font, loc='upper right', frameon=True, shadow=True)
+    ax_graph.grid(True, linestyle='--', alpha=0.4)
+    ax_graph.tick_params(axis='both', which='major', labelsize=9)
 
-    ax_text.text(0, 1, report_text + point_details, family='Tahoma', fontsize=11, verticalalignment='top', linespacing=1.4)
-    ax_graph.set_title("Data Continuity Trend (Resampled 5 min)")
-    ax_graph.set_ylabel("Counts per 5 min")
-    ax_graph.legend(loc='upper right')
-    ax_graph.grid(True, linestyle='--', alpha=0.5)
-    plt.xticks(rotation=45)
-
-    # Export Logic
+    # การจัดการไฟล์สำหรับดาวน์โหลด
     files = {}
-    if export_format in ["PNG", "ทั้งสองแบบ"]:
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-        files['png'] = buf.getvalue()
-    if export_format in ["PDF", "ทั้งสองแบบ"]:
-        buf = io.BytesIO()
-        with PdfPages(buf) as pdf: pdf.savefig(fig, bbox_inches='tight')
-        files['pdf'] = buf.getvalue()
+    if export_format != "None":
+        if export_format in ["PNG", "ทั้งสองแบบ"]:
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', dpi=180) # เพิ่ม DPI ให้ชัดขึ้น
+            files['png'] = buf.getvalue()
+        if export_format in ["PDF", "ทั้งสองแบบ"]:
+            buf = io.BytesIO()
+            with PdfPages(buf) as pdf: pdf.savefig(fig, bbox_inches='tight')
+            files['pdf'] = buf.getvalue()
         
-    return report_text + point_details, files
+    return final_display_text, files
 # --- 3. UI State Management ---
 if 'analysis_sets' not in st.session_state: st.session_state.analysis_sets = {}
 if 'selected_set_id' not in st.session_state: st.session_state.selected_set_id = None
@@ -233,34 +256,60 @@ if st.session_state.selected_set_id:
     points_dict = curr_set['points_data']
     target_date = curr_set['date']
     
-    # 🎯 Header พร้อมปุ่ม "สรุปผล"
     h1, h2 = st.columns([8, 2])
     with h1:
         st.title(f"📊 Analysis: {target_date}")
     with h2:
         st.write(" ")
-        if st.button("📊 Summary Report", use_container_width=True, type="primary"):
+        # สลับสถานะการแสดงผล Summary
+        if st.button("📝 Summary Report", use_container_width=True, type="primary"):
             st.session_state.show_summary = not st.session_state.show_summary
 
-    # 🎯 ระบบ Summary Report Overlay
     if st.session_state.show_summary:
         with st.container(border=True):
-            st.subheader("📝 สร้างรายงานสรุปผล (Summary Report)")
+            st.subheader("📝 ระบบสรุปรายงานอัตโนมัติ")
             c1, c2 = st.columns(2)
             with c1:
-                sel_type = st.radio("เลือกช่วงเวลา", ["12 ชั่วโมง", "24 ชั่วโมง"], horizontal=True)
+                sel_type = st.radio("เลือกช่วงเวลาวิเคราะห์", ["12 ชั่วโมง", "24 ชั่วโมง"], horizontal=True)
             with c2:
-                sel_format = st.selectbox("รูปแบบ Export", ["PNG", "PDF", "ทั้งสองแบบ"])
+                sel_format = st.selectbox("รูปแบบไฟล์ที่จะดาวน์โหลด", ["PNG", "PDF", "ทั้งสองแบบ"])
             
-            if st.button("✅ ยืนยันการสร้างรายงาน", use_container_width=True):
-                # เรียกใช้ฟังก์ชันหลัก (ไม่มี date_picker แล้ว)
-                report_txt, report_files = generate_summary_report(points_dict, target_date, sel_type, sel_format)
-                st.text_area("สรุปรายงาน", report_txt, height=200)
-                dl1, dl2 = st.columns(2)
-                if 'png' in report_files:
-                    st.download_button("🖼️ Download PNG", report_files['png'], "report.png", "image/png", use_container_width=True)
-                if 'pdf' in report_files:
-                    st.download_button("📄 Download PDF", report_files['pdf'], "report.pdf", "application/pdf", use_container_width=True)
+            # --- ขั้นตอนที่ 1: ร่างข้อความ ---
+            if st.button("🔍 1. คำนวณและสร้างร่างข้อความ", use_container_width=True):
+                txt, _ = generate_summary_report(points_dict, target_date, sel_type, "None")
+                st.session_state.current_report_text = txt
+                # ล้างไฟล์เก่าออกเมื่อสร้างร่างใหม่
+                if "generated_files" in st.session_state: 
+                    del st.session_state.generated_files
+
+            # --- ขั้นตอนที่ 2: แก้ไขและยืนยัน ---
+            if "current_report_text" in st.session_state:
+                edited_text = st.text_area("✏️ ตรวจสอบหรือแก้ไขเนื้อหา:", 
+                                         value=st.session_state.current_report_text, height=300)
+                
+                col_gen, col_reset = st.columns([4, 1])
+                with col_gen:
+                    if st.button("💾 2. ยืนยันข้อความและสร้างไฟล์", type="primary", use_container_width=True):
+                        _, report_files = generate_summary_report(points_dict, target_date, sel_type, sel_format, manual_text=edited_text)
+                        st.session_state.generated_files = report_files
+                        st.success("สร้างไฟล์เรียบร้อยแล้ว!")
+                with col_reset:
+                    if st.button("🔄 Reset", use_container_width=True):
+                        if "current_report_text" in st.session_state: del st.session_state.current_report_text
+                        if "generated_files" in st.session_state: del st.session_state.generated_files
+                        st.rerun()
+
+                # --- ส่วนดาวน์โหลด ---
+                if "generated_files" in st.session_state:
+                    st.markdown("---")
+                    _, col_mid, _ = st.columns([1, 2, 1])
+                    with col_mid:
+                        files = st.session_state.generated_files
+                        if 'png' in files:
+                            st.download_button("🖼️ Download PNG Report", files['png'], f"Summary_{target_date}.png", "image/png", use_container_width=True)
+                        if 'pdf' in files:
+                            st.write(" ")
+                            st.download_button("📄 Download PDF Report", files['pdf'], f"Summary_{target_date}.pdf", "application/pdf", use_container_width=True)
         st.divider()
 
     # --- UI เดิม (ห้ามแก้) ---
@@ -346,3 +395,4 @@ if st.session_state.selected_set_id:
 else:
     st.title("👈 โปรดอัปโหลดหรือเลือกชุดข้อมูล")
     st.info("ระบบจะแยก Overall และ Gap Analysis ของแต่ละ Point ให้โดยอัตโนมัติ")
+

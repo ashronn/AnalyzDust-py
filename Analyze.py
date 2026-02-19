@@ -9,13 +9,36 @@ import matplotlib.pyplot as plt
 import matplotlib
 from datetime import datetime as dt
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.font_manager as fm
+import urllib.request
+import os
 
+# 1.1 ระบบดาวน์โหลดและติดตั้งฟอนต์อัตโนมัติ
+def setup_thai_font():
+    font_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf"
+    font_name = "Sarabun-Regular.ttf"
+    try:
+        if not os.path.exists(font_name):
+            urllib.request.urlretrieve(font_url, font_name)
+        fm.fontManager.addfont(font_name)
+        # ดึงชื่อฟอนต์ที่แท้จริงจากไฟล์
+        prop = fm.FontProperties(fname=font_name)
+        return prop
+    except Exception as e:
+        st.error(f"Font Load Error: {e}")
+        return None
 
-# python -m streamlit run Analyze.py
+# เรียกใช้งานและเก็บตัวแปรไว้ใช้ทั่วโปรแกรม
+thai_font_prop = setup_thai_font()
 
+if thai_font_prop:
+    # ตั้งค่า Default ให้ Matplotlib ใช้ฟอนต์ที่โหลดมา
+    matplotlib.rcParams['font.family'] = thai_font_prop.get_name()
+else:
+    # กรณีโหลดไม่สำเร็จจริงๆ ให้ใช้ฟอนต์ที่มีในระบบ
+    matplotlib.rcParams['font.family'] = 'sans-serif'
 
-# --- 1. Configuration & Logic เดิม (ห้ามแก้ไข) ---
-matplotlib.rcParams['font.family'] = 'Tahoma'
+#=============================================================================
 
 def apply_calc_logic(df):
     """รักษา Logic การคำนวณเดิม: สร้าง flag สำหรับการวิเคราะห์คุณภาพ"""
@@ -157,7 +180,11 @@ def generate_summary_report(points_data, target_date_str, report_type, export_fo
             # ใช้พล็อตจำนวน Both Sensors ต่อ 5 นาทีเพื่อให้เหมือน Tab Trend
             ax_graph.plot(res_graph.index, res_graph['has_both'], label=f'Point {pid}', linewidth=1.5)
 
-    ax_text.text(0, 1, report_text + point_details, family='Tahoma', fontsize=11, verticalalignment='top', linespacing=1.4)
+    ax_text.text(0, 1, report_text + point_details, 
+             fontproperties=thai_font_prop,  # ใช้ตัวแปรที่เราสร้างไว้ข้างบน
+             fontsize=11, 
+             verticalalignment='top', 
+             linespacing=1.4)
     ax_graph.set_title("Data Continuity Trend (Resampled 5 min)")
     ax_graph.set_ylabel("Counts per 5 min")
     ax_graph.legend(loc='upper right')
@@ -345,4 +372,5 @@ if st.session_state.selected_set_id:
         st.plotly_chart(fig_val, use_container_width=True)
 else:
     st.title("👈 โปรดอัปโหลดหรือเลือกชุดข้อมูล")
+
     st.info("ระบบจะแยก Overall และ Gap Analysis ของแต่ละ Point ให้โดยอัตโนมัติ")

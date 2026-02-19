@@ -315,32 +315,13 @@ if st.session_state.selected_set_id:
                     st.success("สร้างไฟล์พร้อมดาวน์โหลดแล้ว!")
 
                 # 4. แสดงปุ่มดาวน์โหลด (ถ้าไฟล์ถูกสร้างแล้ว)
-                if 'final_files' in st.session_state:
-                st.markdown("---") # เส้นคั่นเบาๆ
-                report_files = st.session_state.final_files
-                
-                # ใช้ 3 columns โดยให้ col_mid (ตรงกลาง) เป็นคนถือปุ่ม
-                # เลข [1, 2, 1] หมายถึง ด้านซ้ายว่าง 1 ส่วน / ตรงกลางกว้าง 2 ส่วน / ด้านขวาว่าง 1 ส่วน
-                col_side_l, col_mid, col_side_r = st.columns([1, 2, 1])
-                
-                with col_mid:
-                    if 'png' in report_files:
-                        st.download_button(
-                            "📥 Download PNG (Updated Text)", 
-                            report_files['png'], 
-                            "report.png", 
-                            "image/png", 
-                            use_container_width=True
-                        )
-                    
-                    # ถ้ามี PDF ด้วย ให้เว้นระยะนิดหน่อยแล้ววางต่อกัน
-                    if 'pdf' in report_files:
-                        st.download_button(
-                            "📄 Download PDF (Updated Text)", 
-                            report_files['pdf'], 
-                            "report.pdf", 
-                            "application/pdf", 
-                            use_container_width=True
+                if "generated_files" in st.session_state:
+                f_cols = st.columns(2)
+                files = st.session_state.generated_files
+                if 'png' in files:
+                    f_cols[0].download_button("🖼️ Download PNG", files['png'], "report.png", "image/png", use_container_width=True)
+                if 'pdf' in files:
+                    f_cols[1].download_button("📄 Download PDF", files['pdf'], "report.pdf", "application/pdf", use_container_width=True)
                         )
 
     # --- UI เดิม (ห้ามแก้) ---
@@ -427,5 +408,6 @@ else:
     st.title("👈 โปรดอัปโหลดหรือเลือกชุดข้อมูล")
 
     st.info("ระบบจะแยก Overall และ Gap Analysis ของแต่ละ Point ให้โดยอัตโนมัติ")
+
 
 
